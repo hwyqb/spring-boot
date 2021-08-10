@@ -195,6 +195,7 @@ public class SpringApplication {
 
 	private static final Log logger = LogFactory.getLog(SpringApplication.class);
 
+	// Java Config 类的数组
 	private Set<Class<?>> primarySources;
 
 	private Set<String> sources = new LinkedHashSet<>();
@@ -211,6 +212,10 @@ public class SpringApplication {
 
 	private Banner banner;
 
+	/**
+	 * 资源加载器接口,传入String资源路径,加载资源
+	 * 主要实现是子类 DefaultResourceLoader
+	 */
 	private ResourceLoader resourceLoader;
 
 	private BeanNameGenerator beanNameGenerator;
@@ -219,14 +224,17 @@ public class SpringApplication {
 
 	private Class<? extends ConfigurableApplicationContext> applicationContextClass;
 
+	// Web 应用类型,servlet等
 	private WebApplicationType webApplicationType;
 
 	private boolean headless = true;
 
 	private boolean registerShutdownHook = true;
 
+	// ApplicationContextInitializer 数组
 	private List<ApplicationContextInitializer<?>> initializers;
 
+	//ApplicationListener 数组
 	private List<ApplicationListener<?>> listeners;
 
 	private Map<String, Object> defaultProperties;
@@ -264,13 +272,20 @@ public class SpringApplication {
 	 * @see #setSources(Set)
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
+	// SpringApplication构造方法
 	public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySources) {
+		//资源加载器 传入NULL
 		this.resourceLoader = resourceLoader;
+		//primarySources 是启动类class对象
 		Assert.notNull(primarySources, "PrimarySources must not be null");
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
+		// web应用类型,一般是servlet
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+		// 使用getSpringFactoriesInstances加载资源,初始化 initializers 属性,在servlet类型下,会拿到7个,并实例化
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
+		// 初始化 listeners 属性,同上,初始化监听器列表,会拿到11个,并实例化
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+		// 从栈中获取到main方法的class对象
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -416,6 +431,15 @@ public class SpringApplication {
 				getSpringFactoriesInstances(SpringApplicationRunListener.class, types, this, args));
 	}
 
+	/**
+	 * ##重要##
+	 * getSpringFactoriesInstances
+	 * 这个方法会去读取所有Jar包的资源目录下META-INF下的spring.factories文件
+	 * 类似SPI机制,获取到文件中指定Class的类全限定名的集合,并实例化
+	 * @param type
+	 * @param <T>
+	 * @return
+	 */
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type) {
 		return getSpringFactoriesInstances(type, new Class<?>[] {});
 	}
@@ -423,8 +447,11 @@ public class SpringApplication {
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
+		// 获取到类名数组 META-INF/spring.factories
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
+		// 实例化对象
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
+		// 排序对象
 		AnnotationAwareOrderComparator.sort(instances);
 		return instances;
 	}
@@ -1212,6 +1239,7 @@ public class SpringApplication {
 	 * @return the running {@link ApplicationContext}
 	 */
 	public static ConfigurableApplicationContext run(Class<?> primarySource, String... args) {
+		// run方法重载
 		return run(new Class<?>[] { primarySource }, args);
 	}
 
@@ -1223,6 +1251,7 @@ public class SpringApplication {
 	 * @return the running {@link ApplicationContext}
 	 */
 	public static ConfigurableApplicationContext run(Class<?>[] primarySources, String[] args) {
+		//创建 SpringApplication 对象,传入启动类class对象,并执行run方法
 		return new SpringApplication(primarySources).run(args);
 	}
 
