@@ -162,7 +162,7 @@ class BeanDefinitionLoader {
 		// 判断启动类是否包含Component注解,启动类类是组合注解,所以包含
 		if (isComponent(source)) {
 			// 使用注解形式的bean阅读器annotatedReader
-			// 最终会调用spring的doRegisterBean,注册启动类到beanDefinitionMap
+			// 最终会调用spring源码的doRegisterBean,注册启动类到beanDefinitionMap
 			this.annotatedReader.register(source);
 			return 1;
 		}

@@ -353,7 +353,9 @@ public class SpringApplication {
 			}
 			// 执行SpringApplicationRunListener的started方法,通知监听器 spring容器已启动完成
 			listeners.started(context);
-			// 调用 ApplicationRunner 或者 CommandLineRunner 的运行方法。
+			//调用 ApplicationRunner 或者 CommandLineRunner 的运行方法。
+			//遍历所有注册的ApplicationRunner和CommandLineRunner,并执行其run()方法。
+			//可以给自己的bean实现的ApplicationRunner或者CommandLineRunner接口,来对SpringBoot的启动过程进行扩展
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
@@ -448,6 +450,7 @@ public class SpringApplication {
 	private void refreshContext(ConfigurableApplicationContext context) {
 		if (this.registerShutdownHook) {
 			try {
+				//注册关机钩子,用于容器关闭时销毁bean
 				context.registerShutdownHook();
 			}
 			catch (AccessControlException ex) {
@@ -824,8 +827,22 @@ public class SpringApplication {
 	 * @param applicationContext the application context to refresh
 	 */
 	protected void refresh(ApplicationContext applicationContext) {
+		// 判断类型 是AbstractApplicationContext的子类
 		Assert.isInstanceOf(AbstractApplicationContext.class, applicationContext);
+		// 调用spring源码中的refresh方法
 		((AbstractApplicationContext) applicationContext).refresh();
+		/**
+		 * 具体步骤有
+		 * 1 刷新环境上下文
+		 * 2 刷新beanFactory(其实没有刷新,因为只能执行一次)，获取beanFactory，返回beanFactory,其实就是在prepareContext时获取的工厂
+		 * 3 准备bean工厂
+		 * 4 设置bean工厂后置处理器postProcessBeanFactory
+		 * 5 调用bena工厂后置处理器(非常重要,这里就是类扫描了)
+		 * 6 注册bean后置处理器
+		 * 7 初始化上下文
+		 * 8 检查监听Bean并且将这些监听Bean向容器注册
+		 * 9 发布容器事件，结束Refresh过程
+		 */
 	}
 
 	/**
@@ -838,9 +855,12 @@ public class SpringApplication {
 
 	private void callRunners(ApplicationContext context, ApplicationArguments args) {
 		List<Object> runners = new ArrayList<>();
+		// 获取容器中ApplicationRunner的实现类
 		runners.addAll(context.getBeansOfType(ApplicationRunner.class).values());
+		// 获取容器中CommandLineRunner的实现类
 		runners.addAll(context.getBeansOfType(CommandLineRunner.class).values());
 		AnnotationAwareOrderComparator.sort(runners);
+		// 遍历执行run
 		for (Object runner : new LinkedHashSet<>(runners)) {
 			if (runner instanceof ApplicationRunner) {
 				callRunner((ApplicationRunner) runner, args);
