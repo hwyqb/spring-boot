@@ -79,12 +79,16 @@ class BeanDefinitionLoader {
 		Assert.notNull(registry, "Registry must not be null");
 		Assert.notEmpty(sources, "Sources must not be empty");
 		this.sources = sources;
+		// 注解形式的Bean阅读器,用于阅读@Configuration @Bean @Component等等等
 		this.annotatedReader = new AnnotatedBeanDefinitionReader(registry);
+		// xml形式的Bean阅读器
 		this.xmlReader = new XmlBeanDefinitionReader(registry);
 		if (isGroovyPresent()) {
 			this.groovyReader = new GroovyBeanDefinitionReader(registry);
 		}
+		// 类路径扫描器
 		this.scanner = new ClassPathBeanDefinitionScanner(registry);
+		// 类扫描器添加排除过滤
 		this.scanner.addExcludeFilter(new ClassExcludeFilter(sources));
 	}
 
@@ -125,6 +129,7 @@ class BeanDefinitionLoader {
 	int load() {
 		int count = 0;
 		for (Object source : this.sources) {
+			// sources其实就是启动类对象
 			count += load(source);
 		}
 		return count;
@@ -133,6 +138,7 @@ class BeanDefinitionLoader {
 	private int load(Object source) {
 		Assert.notNull(source, "Source must not be null");
 		if (source instanceof Class<?>) {
+			// 默认是走从class加载,因为传入的是主类
 			return load((Class<?>) source);
 		}
 		if (source instanceof Resource) {
@@ -153,7 +159,10 @@ class BeanDefinitionLoader {
 			GroovyBeanDefinitionSource loader = BeanUtils.instantiateClass(source, GroovyBeanDefinitionSource.class);
 			load(loader);
 		}
+		// 判断启动类是否包含Component注解,启动类类是组合注解,所以包含
 		if (isComponent(source)) {
+			// 使用注解形式的bean阅读器annotatedReader
+			// 最终会调用spring的doRegisterBean,注册启动类到beanDefinitionMap
 			this.annotatedReader.register(source);
 			return 1;
 		}

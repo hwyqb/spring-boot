@@ -333,14 +333,15 @@ public class SpringApplication {
 			configureIgnoreBeanInfo(environment);
 			// 打印banner
 			Banner printedBanner = printBanner(environment);
-			// 初始化应用上下文,创建 Spring 容器
+			// 初始化应用上下文,创建 Spring 容器:AnnotationConfigServletWebServerApplicationContext
 			context = createApplicationContext();
 			// 实例化启动异常报告器(META-INF/spring.factories -> SpringBootExceptionReporter)
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);//构造函数传入spring上下文
 			// 调用所有初始化类的initialize方法(ApplicationContextInitializer#initialize)
+			// 并load 启动类到ioc容器中
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
-			// 启动&刷新容器
+			// 启动&刷新spring容器
 			refreshContext(context);
 			// 执行 Spring 容器的初始化的后置逻辑,默认空实现
 			afterRefresh(context, applicationArguments);
@@ -408,15 +409,21 @@ public class SpringApplication {
 
 	private void prepareContext(ConfigurableApplicationContext context, ConfigurableEnvironment environment,
 			SpringApplicationRunListeners listeners, ApplicationArguments applicationArguments, Banner printedBanner) {
+		// 设置environment属性
 		context.setEnvironment(environment);
+		// 设置context的一些属性
 		postProcessApplicationContext(context);
+		// 初始化ApplicationContextInitializer,调用Initializers方法,传入centext应用上下文
 		applyInitializers(context);
+		// 执行SpringApplicationRunListener的contextPrepared方法,通知监听器 Spring容器准备完成
 		listeners.contextPrepared(context);
+		// 打印日志 : The following profiles are active:xxx
 		if (this.logStartupInfo) {
 			logStartupInfo(context.getParent() == null);
 			logStartupProfileInfo(context);
 		}
 		// Add boot specific singleton beans
+		// 设置beanFactory:DefaultListableBeanFactory
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
 		beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
 		if (printedBanner != null) {
@@ -430,9 +437,11 @@ public class SpringApplication {
 			context.addBeanFactoryPostProcessor(new LazyInitializationBeanFactoryPostProcessor());
 		}
 		// Load the sources
+		// 加载 BeanDefinition,初次进入时,其实只返回了启动类对象:primarySources
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
 		load(context, sources.toArray(new Object[0]));
+		// 执行SpringApplicationRunListener的contextLoaded方法,通知监听器 Spring 容器加载完成
 		listeners.contextLoaded(context);
 	}
 
@@ -626,6 +635,7 @@ public class SpringApplication {
 	 * @see #setApplicationContextClass(Class)
 	 */
 	protected ConfigurableApplicationContext createApplicationContext() {
+		// 根据webApplicationType类型,获取应用上下文ApplicationContext容器类型
 		Class<?> contextClass = this.applicationContextClass;
 		if (contextClass == null) {
 			try {
@@ -645,6 +655,7 @@ public class SpringApplication {
 						"Unable create a default ApplicationContext, please specify an ApplicationContextClass", ex);
 			}
 		}
+		// 创建ApplicationContext对象
 		return (ConfigurableApplicationContext) BeanUtils.instantiateClass(contextClass);
 	}
 
@@ -679,10 +690,13 @@ public class SpringApplication {
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void applyInitializers(ConfigurableApplicationContext context) {
+		// 遍历 ApplicationContextInitializer 数组
 		for (ApplicationContextInitializer initializer : getInitializers()) {
+			//校验
 			Class<?> requiredType = GenericTypeResolver.resolveTypeArgument(initializer.getClass(),
 					ApplicationContextInitializer.class);
 			Assert.isInstanceOf(requiredType, context, "Unable to call initializer.");
+			// 初始化ApplicationContextInitializer
 			initializer.initialize(context);
 		}
 	}
@@ -738,16 +752,22 @@ public class SpringApplication {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Loading source " + StringUtils.arrayToCommaDelimitedString(sources));
 		}
+		// 创建BeanDefinitionLoader,设置bean扫描的各种属性,比如注解和包扫描等
 		BeanDefinitionLoader loader = createBeanDefinitionLoader(getBeanDefinitionRegistry(context), sources);
+		// loader属性配置
 		if (this.beanNameGenerator != null) {
+			// Bean 名称生成器
 			loader.setBeanNameGenerator(this.beanNameGenerator);
 		}
 		if (this.resourceLoader != null) {
+			// 资源加载器
 			loader.setResourceLoader(this.resourceLoader);
 		}
 		if (this.environment != null) {
+			// 环境ConfigurableEnvironment
 			loader.setEnvironment(this.environment);
 		}
+		// 执行BeanDefinition加载
 		loader.load();
 	}
 
@@ -777,6 +797,7 @@ public class SpringApplication {
 	 * Get the bean definition registry.
 	 * @param context the application context
 	 * @return the BeanDefinitionRegistry if it can be determined
+	 * BeanDefinitionRegistry中定义了法registerBeanDefinition()方法,用于向注册表中注册BeanDefinition实例,完成注册的过程
 	 */
 	private BeanDefinitionRegistry getBeanDefinitionRegistry(ApplicationContext context) {
 		if (context instanceof BeanDefinitionRegistry) {
