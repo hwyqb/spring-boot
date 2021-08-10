@@ -309,42 +309,64 @@ public class SpringApplication {
 	 * {@link ApplicationContext}.
 	 * @param args the application arguments (usually passed from a Java main method)
 	 * @return a running {@link ApplicationContext}
+	 *
+	 * SpringApplication#run(String... args)方法
 	 */
 	public ConfigurableApplicationContext run(String... args) {
+		// 创建 StopWatch 对象,用于记录run启动时长
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
+		// spring上下文
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
+		// 配置 headless 属性(AWT相关,不重要)
 		configureHeadlessProperty();
+		// 获取SpringApplicationRunListener列表,并启动监听(META-INF/spring.factories -> SpringApplicationRunListener)
 		SpringApplicationRunListeners listeners = getRunListeners(args);
+		// 负责在springboot启动不同阶段广播不同的消息，传递给ApplicationListener监听器实现类。
 		listeners.starting();
 		try {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+			// 加载属性配置(application.properties)
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
+			// 配置系统属性:bean忽略属性
 			configureIgnoreBeanInfo(environment);
+			// 打印banner
 			Banner printedBanner = printBanner(environment);
+			// 初始化应用上下文,创建 Spring 容器
 			context = createApplicationContext();
+			// 实例化启动异常报告器(META-INF/spring.factories -> SpringBootExceptionReporter)
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
-					new Class[] { ConfigurableApplicationContext.class }, context);
+					new Class[] { ConfigurableApplicationContext.class }, context);//构造函数传入spring上下文
+			// 调用所有初始化类的initialize方法(ApplicationContextInitializer#initialize)
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
+			// 启动&刷新容器
 			refreshContext(context);
+			// 执行 Spring 容器的初始化的后置逻辑,默认空实现
 			afterRefresh(context, applicationArguments);
+			// 时间记录停止
 			stopWatch.stop();
+			// 打印springboot启动时长
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
 			}
+			// 执行SpringApplicationRunListener的started方法,通知监听器 spring容器已启动完成
 			listeners.started(context);
+			// 调用 ApplicationRunner 或者 CommandLineRunner 的运行方法。
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
+			// 由SpringBootExceptionReporter 处理异常,并抛出异常
 			handleRunFailure(context, ex, exceptionReporters, listeners);
 			throw new IllegalStateException(ex);
 		}
 
 		try {
+			// 执行SpringApplicationRunListener的started方法,通知监听器 spring容器启动中
 			listeners.running(context);
 		}
 		catch (Throwable ex) {
+			// 由SpringBootExceptionReporter 处理异常,并抛出异常
 			handleRunFailure(context, ex, exceptionReporters, null);
 			throw new IllegalStateException(ex);
 		}
