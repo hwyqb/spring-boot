@@ -327,9 +327,9 @@ public class SpringApplication {
 		listeners.starting();
 		try {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
-			// 加载属性配置(application.properties)
+			// 配置环境,加载属性和配置(application.properties\Profiles\环境变量)
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
-			// 配置系统属性:bean忽略属性
+			// 配置系统属性:bean忽略属性(不重要,忽略)
 			configureIgnoreBeanInfo(environment);
 			// 打印banner
 			Banner printedBanner = printBanner(environment);
@@ -362,7 +362,7 @@ public class SpringApplication {
 		}
 
 		try {
-			// 执行SpringApplicationRunListener的started方法,通知监听器 spring容器启动中
+			// 执行SpringApplicationRunListener的running方法,通知监听器 spring容器启动中
 			listeners.running(context);
 		}
 		catch (Throwable ex) {
@@ -376,11 +376,17 @@ public class SpringApplication {
 	private ConfigurableEnvironment prepareEnvironment(SpringApplicationRunListeners listeners,
 			ApplicationArguments applicationArguments) {
 		// Create and configure the environment
+		// 根据web容器类型,创建 ConfigurableEnvironment 对象
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
+		// 配置环境,包括环境变量和Profiles
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
 		ConfigurationPropertySources.attach(environment);
+		// 执行SpringApplicationRunListener的environmentPrepared方法,通知监听器 环境变量已经准备好了
+		// 此时会填充用户自定义配置文件application.properties
 		listeners.environmentPrepared(environment);
+		// 绑定 environment 到 SpringApplication 上
 		bindToSpringApplication(environment);
+		// 非自定义environment,会根据条件转换,最后返回的还是environment自身,可以忽略
 		if (!this.isCustomEnvironment) {
 			environment = new EnvironmentConverter(getClassLoader()).convertEnvironmentIfNecessary(environment,
 					deduceEnvironmentClass());
@@ -501,6 +507,7 @@ public class SpringApplication {
 		if (this.environment != null) {
 			return this.environment;
 		}
+		// 根据 webApplicationType 类型，创建不同的配置环境ConfigurableEnvironment
 		switch (this.webApplicationType) {
 		case SERVLET:
 			return new StandardServletEnvironment();
@@ -523,11 +530,14 @@ public class SpringApplication {
 	 * @see #configurePropertySources(ConfigurableEnvironment, String[])
 	 */
 	protected void configureEnvironment(ConfigurableEnvironment environment, String[] args) {
+		// 设置 environment 的 conversionService 属性
 		if (this.addConversionService) {
 			ConversionService conversionService = ApplicationConversionService.getSharedInstance();
 			environment.setConversionService((ConfigurableConversionService) conversionService);
 		}
+		// 配置 environment 的 PropertySource 属性源(环境变量\用户名等等等几十种属性)
 		configurePropertySources(environment, args);
+		// 配置environment的activeProfiles属性,基于启动命令和配置文件
 		configureProfiles(environment, args);
 	}
 
@@ -543,9 +553,10 @@ public class SpringApplication {
 		if (this.defaultProperties != null && !this.defaultProperties.isEmpty()) {
 			sources.addLast(new MapPropertySource("defaultProperties", this.defaultProperties));
 		}
+		// 启动参数的
 		if (this.addCommandLineProperties && args.length > 0) {
 			String name = CommandLinePropertySource.COMMAND_LINE_PROPERTY_SOURCE_NAME;
-			if (sources.contains(name)) {
+			if (sources.contains(name)) { //相同就覆盖
 				PropertySource<?> source = sources.get(name);
 				CompositePropertySource composite = new CompositePropertySource(name);
 				composite.addPropertySource(
@@ -553,7 +564,7 @@ public class SpringApplication {
 				composite.addPropertySource(source);
 				sources.replace(name, composite);
 			}
-			else {
+			else { // 不存在,就进行添加
 				sources.addFirst(new SimpleCommandLinePropertySource(args));
 			}
 		}
