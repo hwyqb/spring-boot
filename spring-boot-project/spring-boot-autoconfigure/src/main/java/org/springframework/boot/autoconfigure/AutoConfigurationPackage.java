@@ -37,6 +37,8 @@ import org.springframework.context.annotation.Import;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
+//导入AutoConfigurationPackages.Registrar.class,作用是使用 @AutoConfigurationPackage 注解的类所在的包（package），注册成一个 Spring IoC 容器中的 Bean
+//后续有其它模块需要使用，就可以通过获得该 Bean ，从而获得启动类所在的包
 @Import(AutoConfigurationPackages.Registrar.class)
 public @interface AutoConfigurationPackage {
 

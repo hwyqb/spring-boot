@@ -843,6 +843,12 @@ public class SpringApplication {
 		 * 8 检查监听Bean并且将这些监听Bean向容器注册
 		 * 9 发布容器事件，结束Refresh过程
 		 */
+		/**
+		 *
+		 * tomcat容器启动介绍
+		 * 其实就是执行ServletWebServerApplicationContext的onRefresh方法中的#createWebServer
+		 *
+		 */
 	}
 
 	/**

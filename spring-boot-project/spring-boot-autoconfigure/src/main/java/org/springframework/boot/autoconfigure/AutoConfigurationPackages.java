@@ -90,13 +90,17 @@ public abstract class AutoConfigurationPackages {
 	 * @param packageNames the package names to set
 	 */
 	public static void register(BeanDefinitionRegistry registry, String... packageNames) {
+		// packageNames 是主类的包名
 		if (registry.containsBeanDefinition(BEAN)) {
+			//如果已注册,将要注册包名称添加进去,AutoConfigurationPackages
 			BeanDefinition beanDefinition = registry.getBeanDefinition(BEAN);
 			ConstructorArgumentValues constructorArguments = beanDefinition.getConstructorArgumentValues();
 			constructorArguments.addIndexedArgumentValue(0, addBasePackages(constructorArguments, packageNames));
 		}
 		else {
+			//如果没注册,注册
 			GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+			//类型BasePackages,里面有一个属性packages
 			beanDefinition.setBeanClass(BasePackages.class);
 			beanDefinition.getConstructorArgumentValues().addIndexedArgumentValue(0, packageNames);
 			beanDefinition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
@@ -119,7 +123,10 @@ public abstract class AutoConfigurationPackages {
 	static class Registrar implements ImportBeanDefinitionRegistrar, DeterminableImports {
 
 		@Override
+		// 这个方法注册一个用于存储包名的 Bean 到 SpringIoC 容器中
 		public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+			//new PackageImport(metadata).getPackageName() 返回的是包名 com.xjfuuu
+			//注册的 BEAN 的类型，为 BasePackages 类型。它是 AutoConfigurationPackages 的内部类,里面存储了packages集合
 			register(registry, new PackageImport(metadata).getPackageName());
 		}
 
