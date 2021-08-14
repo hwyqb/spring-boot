@@ -178,7 +178,8 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 		ServletContext servletContext = getServletContext();
 		if (webServer == null && servletContext == null) {
 			ServletWebServerFactory factory = getWebServerFactory();
-			//启动
+			//调用了TomcatServletWebServerFactory#getWebServer,获取了web容器
+			//getSelfInitializer() 这个方法负责绑定dispatcherServlet给sevletContext
 			this.webServer = factory.getWebServer(getSelfInitializer());
 		}
 		else if (servletContext != null) {
@@ -219,6 +220,7 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 	 * @see #prepareWebApplicationContext(ServletContext)
 	 */
 	private org.springframework.boot.web.servlet.ServletContextInitializer getSelfInitializer() {
+		//绑定servlet
 		return this::selfInitialize;
 	}
 
@@ -226,7 +228,9 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 		prepareWebApplicationContext(servletContext);
 		registerApplicationScope(servletContext);
 		WebApplicationContextUtils.registerEnvironmentBeans(getBeanFactory(), servletContext);
+		//getServletContextInitializerBeans.获取所有的servlet
 		for (ServletContextInitializer beans : getServletContextInitializerBeans()) {
+			//这个里调用onStartup,就是执行servlet注册了.最终调用一个注册方法.
 			beans.onStartup(servletContext);
 		}
 	}
